@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { ethers } from "ethers"
 import { Row, Form, Button } from 'react-bootstrap'
-import { create as ipfsHttpClient } from 'ipfs-http-client'
-const client = ipfsHttpClient('https://ipfs.infura.io:5001/api/v0')
+const { NFTStorage, Blob, toAsyncIterable } = require('nft.storage');
+
+const client = new NFTStorage({ token : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDAxOEUxOTg5ZDlBMTIxYzQ1MEMzQkYwMUU1NUFkMjEwZDIwN0QyMTIiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY2MDYxNTU0NDE4MiwibmFtZSI6InVuZGVydGhlc2VhIn0.vtYc8a4HKnzG7sdE0xkxi-Ns2maF6qvq47t3NkXY5dA'});
 
 const Create = ({ marketplace, nft }) => {
   const [image, setImage] = useState('')
@@ -14,25 +15,33 @@ const Create = ({ marketplace, nft }) => {
     const file = event.target.files[0]
     if (typeof file !== 'undefined') {
       try {
-        const result = await client.add(file)
+        const result = await store(file)
         console.log(result)
-        setImage(`https://ipfs.infura.io/ipfs/${result.path}`)
+
+        setImage(`https://ipfs.io/ipfs/${result}`)
       } catch (error){
         console.log("ipfs image upload error: ", error)
       }
     }
   }
+  const store = async (data) => {
+    const fileCid = await client.storeBlob(new Blob([data]));
+    const fileUrl = "https://ipfs.io/ipfs/" + fileCid;
+    console.log(fileUrl);
+    return fileCid;
+  }
   const createNFT = async () => {
     if (!image || !price || !name || !description) return
     try{
-      const result = await client.add(JSON.stringify({image, price, name, description}))
+      const metadata = new Blob([JSON.stringify({image, price, name, description})])
+      const result = await client.storeBlob(metadata);
       mintThenList(result)
     } catch(error) {
       console.log("ipfs uri upload error: ", error)
     }
   }
   const mintThenList = async (result) => {
-    const uri = `https://ipfs.infura.io/ipfs/${result.path}`
+    const uri = "https://ipfs.io/ipfs/" + result;
     // mint nft 
     await(await nft.mint(uri)).wait()
     // get tokenId of new nft 
